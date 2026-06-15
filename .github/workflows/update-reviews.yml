@@ -5,16 +5,18 @@ on:
     # 22:00 UTC corresponds to 00:00 (Midnight) Israel Time
     - cron: "0 22 * * *"
   workflow_dispatch:
- 
+
+permissions:
+  contents: write # נדרש כדי לאפשר ל-Action לעדכן את הקבצים במאגר
+
 jobs:
   update-reviews:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true # מבטיח שההרשאות יעברו ל-git push
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -30,10 +32,10 @@ jobs:
           PLACE_ID: ${{ secrets.PLACE_ID }}
         run: python update_reviews.py
 
-      - name: Commit changes (if any)
+      - name: Commit and push changes
         run: |
-          git config user.name  "github-actions[bot]"
+          git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add index.html .reviews_cache.json
-          git diff --cached --quiet || git commit -m "🔄 עדכון ביקורות גוגל אוטומטי [$(date '+%Y-%m-%d')]"
-          git push
+          # הבדיקה כאן מוודאת שמתבצע קומיט רק אם היו שינויים, ומונעת שגיאות אם אין מה לעדכן
+          git diff --cached --quiet || (git commit -m "🔄 עדכון ביקורות גוגל אוטומטי [$(date '+%Y-%m-%d')]" && git push)
